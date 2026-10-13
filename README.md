@@ -20,8 +20,9 @@ Steam Deck so you can install the Android version from Google Play.
 - [Requirements](#requirements)
 - [Install](#install)
 - [Start Android and sign in](#start-android-and-sign-in)
-- [Google Play certification](#google-play-certification)
 - [Install Pokémon Unite](#install-pokémon-unite)
+- [Play with the Steam Deck controls](#play-with-the-steam-deck-controls)
+- [Google Play certification (optional)](#google-play-certification-optional)
 - [After a SteamOS update](#after-a-steamos-update)
 - [Troubleshooting](#troubleshooting)
 - [Uninstall](#uninstall)
@@ -58,7 +59,7 @@ You do **not** need to know how to use the terminal.
 6. When it says **"Waydroid is installed!"** you are done.
 
 The installer also creates a shortcut called **Unite Waydroid** on your desktop **and in your
-Steam library** (Non-Steam). Use it later to get the Android ID, repair, reinstall or uninstall.
+Steam library** (Non-Steam). Use it later to reinstall, repair, uninstall or get the Android ID.
 
 ---
 
@@ -70,12 +71,66 @@ Steam library** (Non-Steam). Use it later to get the Android ID, repair, reinsta
 
 In Game Mode you get the on-screen keyboard with **STEAM + X**.
 
+If Play Store won't let you sign in or complains that the device is not certified, do the
+[Google Play certification](#google-play-certification-optional) first.
+
 ---
 
-## Google Play certification
+## Install Pokémon Unite
 
-Google doesn't trust Waydroid automatically, so the Play Store may block apps until the
-device is registered. This is a one-time step.
+1. Search for **Pokémon UNITE** in Play Store and install it.
+2. Open it and let it download its extra data.
+3. Test with a **new Pokémon Trainer Club account** first. If it runs well, sign in with your
+   **Nintendo Account** to keep your Switch progress (cross-progression).
+
+---
+
+## Play with the Steam Deck controls
+
+The mobile version of Pokémon Unite has **no controller support** – it only understands touch.
+You can always play directly on the **touchscreen**. To use the sticks and buttons you need a
+**key-mapper app** inside Android, which turns button presses into touches on the screen.
+
+The installer already **activates Mantis Gamepad Pro and K2er automatically** every time
+Waydroid starts, so you don't need a PC, ADB or Shizuku. Pick one of them:
+
+1. In Waydroid, install **Mantis Gamepad Pro** (or **K2er**) from Play Store.
+2. Open it once and follow its first-time setup, then **close Waydroid and start it again** –
+   the activation runs automatically on start.
+3. Start **Pokémon Unite** with the key-mapper's overlay and place controls on top of the
+   game's buttons, for example:
+
+   | Steam Deck | Pokémon Unite |
+   |---|---|
+   | Left stick | Movement joystick |
+   | **A** | Basic attack |
+   | **X** / **Y** | Move 1 / Move 2 |
+   | **R1** | Unite Move |
+   | **L1** | Battle item |
+   | **B** | Score (at a goal zone) |
+   | **R2** / **L2** | Recall / Ping (optional) |
+
+4. Save the profile – it loads automatically next time you play.
+
+Tips:
+- In the Steam library, keep the **Waydroid** shortcut on the default controller layout
+  (*Gamepad*), so Android sees a normal controller.
+- Moves that must be aimed are the trickiest with buttons. Many players map them to tap
+  (auto-aim) and aim the occasional skill shot on the touchscreen – touch keeps working
+  while the key-mapper is active.
+- Controller not detected? Restart Waydroid. Bluetooth headphones can interfere with
+  controller detection.
+
+---
+
+## Google Play certification (optional)
+
+**Try installing and playing Pokémon Unite first – you may not need this.**
+
+Google doesn't trust Waydroid automatically. On an uncertified device the Play Store can refuse
+sign-in, say *"Device is not certified"*, hide some apps, or Google sign-in and in-app purchases
+can fail. Registering the device fixes that. It does **not** help against a game's anti-cheat –
+if Pokémon Unite rejects Waydroid, certification won't change it.
 
 1. In Desktop Mode, open **Unite Waydroid** and choose **Get Android ID (Google Play certification)**.
 2. Your Android ID is shown and copied to the clipboard. Press **OK** and the Google page opens:
@@ -88,19 +143,6 @@ device is registered. This is a one-time step.
 
 Still not certified after several hours? In Android go to **Settings → Apps**, clear the data of
 **Google Play Store** and **Google Play services**, and restart Waydroid.
-
----
-
-## Install Pokémon Unite
-
-1. Search for **Pokémon UNITE** in Play Store and install it.
-2. Open it and let it download its extra data.
-3. Test with a **new Pokémon Trainer Club account** first. If it runs well, sign in with your
-   **Nintendo Account** to keep your Switch progress (cross-progression).
-
-**Controls:** the mobile version is made for touch, so the easiest is to play on the Deck's
-**touchscreen**. Key-mapper apps can put touch zones on the controller buttons if you want to
-use sticks and buttons.
 
 ---
 

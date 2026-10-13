@@ -298,7 +298,7 @@ install_waydroid() {
       || { error_with_log "Desktop Mode was affected and could not be repaired."; return 1; }
   fi
 
-  info "<b>Waydroid is installed!</b>\n\n1. Go to Game Mode → Library → Non-Steam → <b>Waydroid</b>\n2. Open Play Store and sign in with Google\n3. Come back here and choose <b>Get Android ID</b> to certify the device"
+  info "<b>Waydroid is installed!</b>\n\n1. Go to Game Mode → Library → Non-Steam → <b>Waydroid</b>\n2. Open Play Store, sign in with Google and install Pokémon UNITE\n\nOnly if Play Store says the device is not certified or won't let you sign in:\ncome back here and choose <b>Get Android ID</b>."
 }
 
 # ---------------------------------------------------------------- Android ID

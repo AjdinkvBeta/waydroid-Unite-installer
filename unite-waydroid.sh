@@ -207,7 +207,74 @@ patch_installer() {
 
   # 6) Toolbox uninstall: don't try to remove packages we never install, keep plymouth
   sed -i -E '/pacman -R/ { s/ plymouth//; s/ wlroots cage//; }' "$toolbox"
+
+  # 7) Use libhoudini instead of libndk: libndk crashes on Pokémon Unite's
+  #    native code ("Guest call didn't restore sp"), libhoudini runs it
+  sed -i 's/install {libndk,widevine}/install {libhoudini,widevine}/' "$REPO_DIR/functions.sh"
+  grep -q 'install {libhoudini,widevine}' "$REPO_DIR/functions.sh" || { echo "Patch failed (libhoudini)."; return 1; }
   return 0
+}
+
+# ---------------------------------------------------------------- overlay on /home
+# Waydroid's overlay folder lives on the tiny /var partition (~230 MB). The ARM
+# translator alone is bigger than that, so we bind-mount it from /home.
+OVERLAY_VAR="/var/lib/waydroid/overlay"
+OVERLAY_HOME="$HOME/waydroid/overlay"
+
+do_prepare_overlay() {
+  mkdir -p "$OVERLAY_HOME"
+  if mountpoint -q "$OVERLAY_VAR"; then
+    echo "Overlay is already on /home."
+    return 0
+  fi
+  as_root mkdir -p /var/lib/waydroid
+  [ -L "$OVERLAY_VAR" ] && as_root rm -f "$OVERLAY_VAR"
+  if [ -d "$OVERLAY_VAR" ]; then
+    echo "Moving existing overlay files to /home..."
+    as_root cp -a "$OVERLAY_VAR/." "$OVERLAY_HOME/" && as_root rm -rf "$OVERLAY_VAR"
+  fi
+  as_root mkdir -p "$OVERLAY_VAR"
+  if ! grep -qF "$OVERLAY_HOME $OVERLAY_VAR " /etc/fstab; then
+    as_root sh -c "echo '$OVERLAY_HOME $OVERLAY_VAR none bind,nofail,x-systemd.requires-mounts-for=/home 0 0' >> /etc/fstab"
+  fi
+  as_root systemctl daemon-reload
+  as_root mount "$OVERLAY_VAR"
+  mountpoint -q "$OVERLAY_VAR" && echo "Overlay is now on /home."
+}
+
+# ---------------------------------------------------------------- ARM translator
+# Android uses the last ro.dalvik.vm.native.bridge line in the file
+current_translator() {
+  grep 'ro.dalvik.vm.native.bridge=' /var/lib/waydroid/waydroid_base.prop 2>/dev/null | tail -n1 | cut -d= -f2
+}
+translator_is_ndk() { [[ "$(current_translator)" == libndk* ]]; }
+
+do_switch_to_houdini() {
+  local ws="$BASE/waydroid_script"
+  echo "Downloading waydroid_script..."
+  rm -rf "$ws"
+  git clone -q --depth 1 https://github.com/casualsnek/waydroid_script "$ws" || return 1
+  python3 -m venv "$ws/venv" && "$ws/venv/bin/pip" install -q -r "$ws/requirements.txt" || return 1
+  as_root systemctl stop waydroid-container
+  if translator_is_ndk; then
+    echo "Removing libndk..."
+    as_root "$ws/venv/bin/python3" "$ws/main.py" -a 13 remove libndk
+  fi
+  echo "Installing libhoudini..."
+  as_root "$ws/venv/bin/python3" "$ws/main.py" -a 13 install libhoudini || return 1
+  [[ "$(current_translator)" == libhoudini* ]]
+}
+
+switch_to_houdini() {
+  get_password || return 1
+  run_with_progress "Preparing storage for the ARM translator..." do_prepare_overlay \
+    || { error_with_log "Could not move the overlay folder to /home."; return 1; }
+  if run_with_progress "Switching the ARM translator to libhoudini..." do_switch_to_houdini; then
+    info "The ARM translator is now <b>libhoudini</b>.\n\nStart Waydroid again and try Pokémon UNITE."
+  else
+    error_with_log "Switching to libhoudini failed."
+    return 1
+  fi
 }
 
 # ---------------------------------------------------------------- private cage
@@ -282,6 +349,8 @@ install_waydroid() {
   rm -rf "$REPO_DIR"
   cp -r "$SRC/vendor/steamos-waydroid-installer" "$REPO_DIR"
   patch_installer >>"$LOG" 2>&1 || { error_with_log "Could not prepare the installer."; return 1; }
+  run_with_progress "Preparing storage on /home..." do_prepare_overlay \
+    || { error_with_log "Could not move Waydroid's overlay folder to /home."; return 1; }
 
   info "The installation starts now and takes about 5–15 minutes.\n\nWhen a window asks which Android image to use, choose:\n\n<b>A13_GAPPS</b>  (Android 13 with Google Play – already selected)\n\nKeep the Steam Deck plugged in and connected to Wi-Fi."
 
@@ -292,6 +361,12 @@ install_waydroid() {
   fi
 
   setup_private_cage || return 1
+
+  # A reinstall over an older libndk install keeps libndk - switch it
+  if translator_is_ndk; then
+    run_with_progress "Switching the ARM translator to libhoudini..." do_switch_to_houdini \
+      || { error_with_log "Switching to libhoudini failed."; return 1; }
+  fi
 
   if desktop_broken; then
     run_with_progress "Repairing Desktop Mode..." do_repair_desktop \
@@ -349,6 +424,8 @@ do_uninstall() {
   pkgs=$(pacman -Qq waydroid python-gbinder libgbinder libglibutil wlr-randr cage wlroots0.18 \
          binder_linux-dkms 2>/dev/null)
   [ -n "$pkgs" ] && as_root pacman -R --noconfirm $pkgs
+  mountpoint -q "$OVERLAY_VAR" && as_root umount "$OVERLAY_VAR"
+  as_root sed -i "\#$OVERLAY_HOME $OVERLAY_VAR #d" /etc/fstab
   as_root rm -rf /var/lib/waydroid /etc/waydroid-extra \
     /etc/sudoers.d/zzzzzzzz-waydroid /etc/modules-load.d/waydroid_binder.conf \
     /etc/modprobe.d/waydroid_binder.conf /usr/bin/waydroid-startup-scripts \
@@ -394,10 +471,16 @@ fi
 if ! command -v waydroid >/dev/null 2>&1; then
   ask "Waydroid is not installed (or was removed by a SteamOS update).\n\nInstall it now? This takes about 5–15 minutes." \
     && install_waydroid
-elif [ ! -x "$CAGE_DIR/root/usr/bin/cage" ]; then
-  ask "Waydroid is installed, but its display window (cage) still needs to be set up.\n\nDo it now? (Takes about a minute.)" \
-    && setup_private_cage \
-    && info "Done! Go to Game Mode → Library → Non-Steam → <b>Waydroid</b>."
+else
+  if [ ! -x "$CAGE_DIR/root/usr/bin/cage" ]; then
+    ask "Waydroid is installed, but its display window (cage) still needs to be set up.\n\nDo it now? (Takes about a minute.)" \
+      && setup_private_cage \
+      && info "Done! Go to Game Mode → Library → Non-Steam → <b>Waydroid</b>."
+  fi
+  if translator_is_ndk; then
+    ask "Waydroid uses the <b>libndk</b> ARM translator, which makes Pokémon UNITE crash while loading.\n\nSwitch to <b>libhoudini</b> now? (Takes a few minutes.)" \
+      && switch_to_houdini
+  fi
 fi
 
 while true; do
@@ -407,6 +490,7 @@ while true; do
       "Install / reinstall Waydroid" \
       "Get Android ID (Google Play certification)" \
       "Repair Desktop Mode" \
+      "Switch ARM translator to libhoudini" \
       "Uninstall Waydroid" \
       "Show log" \
       "Exit" 2>/dev/null) || exit 0
@@ -415,6 +499,7 @@ while true; do
     "Get Android ID (Google Play certification)")  get_android_id ;;
     "Repair Desktop Mode")
         if desktop_broken; then repair_desktop; else info "Desktop Mode looks fine – nothing to repair."; fi ;;
+    "Switch ARM translator to libhoudini")         switch_to_houdini ;;
     "Uninstall Waydroid")                          uninstall_waydroid ;;
     "Show log")
         zenity --text-info --title "$APP – log" --width 820 --height 520 --filename "$LOG" 2>/dev/null ;;

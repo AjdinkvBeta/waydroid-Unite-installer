@@ -7,6 +7,11 @@ Pokémon Unite has no PC/Steam version. It exists for Nintendo Switch, Android a
 and the Switch 1 version is known to run poorly. This project sets up Android on the
 Steam Deck so you can install the Android version from Google Play.
 
+> [!NOTE]
+> **Status (October 2026):** On SteamOS 3.8 Pokémon UNITE installs, starts, downloads its
+> in-game update and reaches the login. Logging in can currently fail with
+> *"Data error detected. Please try again."* – see [Troubleshooting](#data-error-detected-at-logging-in).
+
 > [!WARNING]
 > **Unofficial and with no guarantees.** Pokémon Unite has anti-cheat and may refuse to
 > run inside Waydroid, or stop working later. Try it with a **new Pokémon Trainer Club
@@ -194,9 +199,39 @@ and install the update. A SteamOS update rewrites the system and removes the bro
 The kernel on SteamOS 3.8+ has no binder module. This installer builds it automatically —
 make sure you use this installer and not the original one.
 
+### Pokémon Unite closes at "Preparing to start game… 30%"
+
+Waydroid is using the **libndk** ARM translator, which crashes on the game's native code
+(`Guest call didn't restore sp` in `libndk_translation.so`). Open **Unite Waydroid** and choose
+**Switch ARM translator to libhoudini**. New installs use libhoudini automatically.
+
+### Pokémon Unite closes immediately when you tap it
+
+No ARM translator is active (the log says `libanogs.so … is for EM_AARCH64`). Run
+**Switch ARM translator to libhoudini** from the menu.
+
+### "Data error detected" at "Logging in…"
+
+Known open issue. The game is fully downloaded but the login is refused. Likely causes are the
+game's anti-cheat (Tencent AntiCheat Expert, `libanogs.so`) or the device not being Google-certified.
+Things to try: press **Retry**, restart the game, complete the
+[Google Play certification](#google-play-certification-optional), and clear the game's
+**cache** (not data) in Android *Settings → Apps → Pokémon UNITE → Storage*.
+If you find a fix, please open an issue.
+
 ### Pokémon Unite crashes or says the device is not supported
 
 Most likely the game's anti-cheat blocks Waydroid. There is no reliable fix for that.
+
+### Collecting a crash log
+
+With the Android window open right after a crash, in Konsole:
+
+```bash
+sudo waydroid shell -- logcat -d | grep -iE " F DEBUG|FATAL|UnsatisfiedLink" | tail -40
+```
+
+You can start Android in a window in Desktop Mode with `~/Android_Waydroid/Android_Waydroid_Cage.sh`.
 
 ### Something else
 
@@ -224,6 +259,8 @@ repository was removed from GitHub). At install time it applies these fixes to a
 | Kernel has no binder module → Android can't start | Builds `binder_linux-dkms` for the running kernel |
 | Installing `cage` pulls an old `wlroots0.18` that downgrades `libdisplay-info` → **Desktop Mode breaks** | cage is never installed system-wide; it runs from a private folder (`~/unite-waydroid/cage`) with its own libraries |
 | Desktop Mode already broken by an earlier install | Detects it and restores Valve's `libdisplay-info 0.3.0` (checksum-verified) |
+| The libndk ARM translator crashes Pokémon Unite while loading | Installs **libhoudini** instead (and offers to switch older installs) |
+| Waydroid's overlay folder is on the ~230 MB `/var` partition, too small for the translator ("No space left on device") | Bind-mounts it from `~/waydroid/overlay` on `/home` (via `/etc/fstab`) |
 | Original installer and updater point to a deleted repository | Uses the bundled copy; the "Updater" opens this installer |
 | Terminal-only | Windows for password, progress, errors and every step |
 
@@ -240,7 +277,7 @@ mkdir -p ~/unite-waydroid && curl -fsSL https://raw.githubusercontent.com/Ajdink
 - **SteamOS Waydroid Installer** by ryanrudolfoba / 10MinuteSteamDeckGamer — GPL-3.0,
   bundled unmodified in `vendor/steamos-waydroid-installer`
 - **[Waydroid](https://waydro.id)** — the Android container
-- **[waydroid_script](https://github.com/casualsnek/waydroid_script)** by casualsnek — ARM translation (libndk) and Widevine
+- **[waydroid_script](https://github.com/casualsnek/waydroid_script)** by casualsnek — installs the ARM translator (Intel **libhoudini**) and Widevine
 - **[binder_linux-dkms](https://github.com/choff/anbox-modules)** — binder kernel module
 - **libdisplay-info** — MIT, Valve's SteamOS package bundled in `vendor/` for repairs
 

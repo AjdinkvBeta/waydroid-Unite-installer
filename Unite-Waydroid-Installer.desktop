@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Unite Waydroid Installer
+Comment=Install Waydroid on Steam Deck to play Pokémon Unite
+Exec=bash -c "mkdir -p ~/unite-waydroid; if curl -fsSL https://raw.githubusercontent.com/AjdinkvBeta/waydroid-Unite-installer/main/unite-waydroid.sh -o ~/unite-waydroid/unite-waydroid.sh; then bash ~/unite-waydroid/unite-waydroid.sh; else zenity --error --title='Unite Waydroid Installer' --text='Could not download the installer. Check your internet connection and try again.'; fi"
+Icon=applications-games
+Terminal=false
+Categories=Game;
